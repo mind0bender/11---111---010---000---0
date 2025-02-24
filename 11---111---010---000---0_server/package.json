@@ -1,0 +1,22 @@
+{
+  "name": "11---111---010---000---0",
+  "version": "1.0.0",
+  "description": "A socket server for morse communication",
+  "main": "dist/index.js",
+  "repository": "git+https://github.com/mind0bender/11---111---010---000---0.git",
+  "scripts": {
+    "dev": "nodemon src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
+  "author": "Yash Gupta",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "tsc": "^2.0.4",
+    "typescript": "^5.7.3"
+  }
+}
