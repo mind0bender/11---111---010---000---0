@@ -1,31 +1,71 @@
-import { JSX, useEffect, useState } from "react";
+import { JSX, ReactNode, useEffect, useState } from "react";
 import socket from "./socket";
+import MessageCard from "./components/messageCard";
+import MorseBlock from "./components/morseBlocks";
+
+export type MorseFragment = "." | "_" | " ";
+export type MorseMessage = string;
 
 function App(): JSX.Element {
   const [beeping, setBeeping] = useState<boolean>(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [morseMessage, setMorseMessage] =
-    useState<string>("__ ___ ._. ... .\n");
+  const [isConnected, setIsConnected] = useState<string | null>(null);
+  const [morseMessages, setMorseMessages] = useState<Map<string, MorseMessage>>(
+    new Map()
+  );
 
   useEffect((): (() => void) => {
     socket.connect();
-    socket.on("connected", (): void => {
-      setIsConnected(true);
+    socket.on("connected", ({ user }: { user: string }): void => {
+      setIsConnected(user);
+      setMorseMessages(
+        (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> =>
+          new Map(pMM).set(user, "")
+      );
+    });
+    socket.on("friend++", ({ user }: { user: string }): void => {
+      setMorseMessages(
+        (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> =>
+          new Map(pMM).set(user, "")
+      );
+    });
+    socket.on("friend--", ({ user }: { user: string }): void => {
+      setMorseMessages(
+        (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> => {
+          const newMM = new Map(pMM);
+          newMM.delete(user);
+          console.log(user, "deleted", newMM);
+          return newMM;
+        }
+      );
     });
 
-    socket.on("start", (char: string = ""): void => {
-      console.log("start");
-      setMorseMessage((pMM: string): string => pMM + char);
-      setBeeping(true);
-    });
-    socket.on("stop", (char: string = ""): void => {
-      console.log("stop");
-      setMorseMessage((pMM: string): string => pMM + char);
-      setBeeping(false);
-    });
+    socket.on(
+      "start",
+      ({ user, char }: { user: string; char: MorseFragment }): void => {
+        setMorseMessages(
+          (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> => {
+            console.log(pMM.get(user));
+            return new Map(pMM).set(user, (pMM.get(user) || "") + char);
+          }
+        );
+        setBeeping(true);
+      }
+    );
+    socket.on(
+      "stop",
+      ({ user, char }: { user: string; char: MorseFragment }): void => {
+        setMorseMessages(
+          (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> =>
+            new Map(pMM).set(user, (pMM.get(user) || "") + char)
+        );
+        setBeeping(false);
+      }
+    );
 
     return (): void => {
       socket.off("connected");
+      socket.off("friend++");
+      socket.off("friend--");
       socket.off("start");
       socket.off("stop");
       socket.close();
@@ -61,29 +101,88 @@ function App(): JSX.Element {
   }, []);
 
   return (
-    <div className={`bg-gray-800 h-screen flex flex-col`}>
+    <div
+      className={`bg-indigo-200 h-screen flex flex-col font-mono text-stone-800`}>
       <nav>
-        <div className={`text-white px-4 py-2`}>__ ___ ._. ... .</div>
+        <div
+          className={`px-4 py-4 tracking-widest flex flex-col justify-center items-center`}>
+          <MorseBlock code={`__ ___ ._. ... .`} />
+          <hr
+            className={`pt-4 mx-4 w-full border-t-0 border-b-2 border-indigo-300`}
+          />
+        </div>
       </nav>
-      <div className={`flex flex-col justify-center items-center gap-4 grow`}>
-        <div className={`text-white`}>{morseMessage}</div>
-        <button
-          className={`${
-            beeping ? "bg-white" : "bg-black scale-80"
-          } p-10 rounded-full text-gray-800 duration-150`}
-          onClick={(): void => {
-            socket.emit("start", (): void => {
-              console.log("start");
-            });
-          }}
-        />
+      <div className={`flex flex-col justify-center items-center grow`}>
+        <div className={`h-1/2 w-full px-4`}>
+          {/* <div className={`text-lg px-10 py-2`}>Friends</div> */}
+          <div
+            className={`w-full flex justify-center items-center flex-wrap gap-4 overflow-hidden`}>
+            {((): ReactNode => {
+              const users: string[] = Array.from(morseMessages.keys()).filter(
+                (user: string): boolean => user !== isConnected
+              );
+              return users.length ? (
+                users.map(
+                  (user: string): JSX.Element => (
+                    <MessageCard
+                      key={user}
+                      user={user}
+                      message={morseMessages.get(user) || ""}
+                    />
+                  )
+                )
+              ) : (
+                <span className={`text-center text-blue-800`}>
+                  No one's here yet.
+                  <br />
+                  Invite a friend to join the chat!
+                </span>
+              );
+            })()}
+          </div>
+        </div>
+        <div
+          className={`flex flex-col justify-center items-center h-1/2 w-full px-4 py-10 gap-4`}>
+          <div className={`w-full flex justify-center items-center`}>
+            <MessageCard
+              writeMode
+              user={isConnected || "X".repeat(20)}
+              message={isConnected ? morseMessages.get(isConnected) || "" : ""}
+            />
+          </div>
+          <div className={`border-10 border-blue-300 rounded-full`}>
+            <button
+              className={`${
+                beeping ? "bg-white scale-110" : "bg-black"
+              } border border-blue-400 p-10 w-fit rounded-full duration-150`}
+              onTouchStart={(): void => {
+                socket.emit("start", (): void => {
+                  console.log("start");
+                });
+              }}
+              onTouchEnd={(): void => {
+                socket.emit("stop", (): void => {
+                  console.log("stop");
+                });
+              }}
+            />
+          </div>
+          <div
+            className={`text-sm text-slate-500 ${
+              isConnected && morseMessages.get(isConnected) && "scale-0"
+            }`}>
+            Use spacebar to send a message.
+          </div>
+        </div>
       </div>
       <div>
         <div
-          className={`text-white px-4 py-2 ${
+          className={`flex justify-center items-center gap-4 text-sm px-4 py-1 ${
             isConnected ? "bg-green-400" : "bg-red-400"
-          }`}
-        />
+          }`}>
+          <div>{isConnected || "Waiting for connection"}</div>
+          <hr className={`grow ${isConnected || "border-dashed"}`} />
+        </div>
       </div>
     </div>
   );
