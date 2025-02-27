@@ -32,7 +32,13 @@ io.on("connection", (client: Socket): void => {
   };
 
   console.log(`New user connected ${client.id}`);
-  client.emit("connected");
+  client.emit("connected", { user: user.id });
+  client.broadcast.emit("friend++", { user: user.id });
+
+  io.sockets.sockets.forEach((friend: Socket): void => {
+    friend.id !== client.id && client.emit("friend++", { user: friend.id });
+  });
+
   client.on("start", (): void => {
     if (!user.stop || user.start > user.stop) {
       return;
@@ -46,7 +52,7 @@ io.on("connection", (client: Socket): void => {
       console.log(user.start - user.stop);
     }
     user.message += char;
-    client.broadcast.emit("start", char);
+    io.emit("start", { user: user.id, char });
   });
   client.on("stop", (): void => {
     if (user.start === null) {
@@ -60,13 +66,19 @@ io.on("connection", (client: Socket): void => {
       char = ".";
     } else if (diff < 1000) {
       char = "_";
+    } else if (diff > 5000) {
+      user.message = "";
+      console.log("clear");
+      client.emit("clear", { user: user.id });
     }
+    console.log(diff);
     user.message += char;
-    console.log(user);
-    client.broadcast.emit("stop", char);
+    // console.log(user);
+    io.emit("stop", { user: user.id, char });
   });
   client.on("disconnect", (): void => {
     console.log(`User disconnected ${client.id}`);
+    client.broadcast.emit("friend--", { user: user.id });
   });
 });
 
