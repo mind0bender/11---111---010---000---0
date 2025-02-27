@@ -12,30 +12,28 @@ export default function MorseBlock({ code }: MorseBlockProps): JSX.Element {
         .slice(1)
         .map((letter: string, letterIdx: number): ReactNode => {
           return (
-            <>
-              <div className={`flex py-0.5`}>
-                {letter
-                  .split("")
-                  .map((char: string, index: number): ReactNode => {
-                    if (char === ".") {
-                      return (
-                        <>
-                          <Dit key={`${letterIdx}${index}`} />
-                          <Space />
-                        </>
-                      );
-                    } else if (char === "_") {
-                      return (
-                        <>
-                          <Dah key={`${letterIdx}${index}`} />
-                          <Space />
-                        </>
-                      );
-                    }
-                  })}
-                <Space />
-              </div>
-            </>
+            <div key={letterIdx} className={`flex py-0.5`}>
+              {letter
+                .split("")
+                .map((char: string, index: number): ReactNode => {
+                  if (char === ".") {
+                    return (
+                      <div key={`${letterIdx}${index}`} className="flex">
+                        <Dit key={`${letterIdx}${index}`} />
+                        <Space />
+                      </div>
+                    );
+                  } else if (char === "_") {
+                    return (
+                      <div key={`${letterIdx}${index}`} className="flex">
+                        <Dah key={`${letterIdx}${index}`} />
+                        <Space />
+                      </div>
+                    );
+                  }
+                })}
+              <Space />
+            </div>
           );
         })}
     </div>

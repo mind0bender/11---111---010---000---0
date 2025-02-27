@@ -62,12 +62,22 @@ function App(): JSX.Element {
       }
     );
 
+    socket.on("clear", ({ user }: { user: string }): void => {
+      console.log("clear");
+      setMorseMessages(
+        (pMM: Map<string, MorseMessage>): Map<string, MorseMessage> =>
+          new Map(pMM).set(user, "")
+      );
+    });
+
     return (): void => {
       socket.off("connected");
       socket.off("friend++");
       socket.off("friend--");
       socket.off("start");
       socket.off("stop");
+      socket.off("clear");
+
       socket.close();
     };
   }, []);
